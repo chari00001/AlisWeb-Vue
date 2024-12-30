@@ -1,16 +1,43 @@
 <template>
   <div class="urun-listesi">
+    <!-- Filtreleme ve Sıralama Bölümü -->
+    <div class="filtreler">
+      <div class="filtre-grup">
+        <select v-model="secilenKategori">
+          <option value="">Tüm Kategoriler</option>
+          <option v-for="kategori in kategoriler" :key="kategori.id" :value="kategori.id">
+            {{ kategori.kategoriAciklama }}
+          </option>
+        </select>
+
+        <select v-model="secilenMarka">
+          <option value="">Tüm Markalar</option>
+          <option v-for="marka in markalar" :key="marka.id" :value="marka.id">
+            {{ marka.markaAciklama }}
+          </option>
+        </select>
+
+        <select v-model="siralama">
+          <option value="">Sıralama Seçiniz</option>
+          <option value="isim-artan">İsim (A-Z)</option>
+          <option value="isim-azalan">İsim (Z-A)</option>
+          <option value="fiyat-artan">Fiyat (Düşükten Yükseğe)</option>
+          <option value="fiyat-azalan">Fiyat (Yüksekten Düşüğe)</option>
+        </select>
+      </div>
+    </div>
+
     <div v-if="loading" class="loading">
       Yükleniyor...
     </div>
     
     <div v-else class="urunler-container">
-      <div v-if="!urunler.length" class="no-data">
-        Henüz ürün bulunmamaktadır.
+      <div v-if="!filtrelenmisUrunler.length" class="no-data">
+        Ürün bulunamadı.
       </div>
       <div v-else class="urunler-grid">
         <UrunKarti
-          v-for="urun in urunler"
+          v-for="urun in filtrelenmisUrunler"
           :key="urun.id"
           :urun="urun"
           :marka-adi="getMarkaAdi(urun.markaId)"
@@ -70,9 +97,9 @@
       </form>
     </div>
 
-    <button @click="yeniUrunEkle" class="add-button" v-if="!showForm">
+    <router-link to="/urun-ekle" class="add-button" v-if="!showForm">
       Yeni Ürün Ekle
-    </button>
+    </router-link>
   </div>
 </template>
 
@@ -90,6 +117,9 @@ export default {
     const store = useStore()
     const showForm = ref(false)
     const editMode = ref(false)
+    const secilenKategori = ref('')
+    const secilenMarka = ref('')
+    const siralama = ref('')
     const formData = ref({
       id: null,
       olusturmaZamani: null,
@@ -106,6 +136,39 @@ export default {
     const markalar = computed(() => store.state.marka.markalar || [])
     const kategoriler = computed(() => store.state.kategori.kategoriler || [])
     const loading = computed(() => store.state.urun.loading)
+
+    // Filtreleme ve Sıralama
+    const filtrelenmisUrunler = computed(() => {
+      let sonuc = [...urunler.value]
+
+      // Kategori Filtresi
+      if (secilenKategori.value) {
+        sonuc = sonuc.filter(urun => urun.kategoriId === secilenKategori.value)
+      }
+
+      // Marka Filtresi
+      if (secilenMarka.value) {
+        sonuc = sonuc.filter(urun => urun.markaId === secilenMarka.value)
+      }
+
+      // Sıralama
+      switch (siralama.value) {
+        case 'isim-artan':
+          sonuc.sort((a, b) => a.urunAdi.localeCompare(b.urunAdi))
+          break
+        case 'isim-azalan':
+          sonuc.sort((a, b) => b.urunAdi.localeCompare(a.urunAdi))
+          break
+        case 'fiyat-artan':
+          sonuc.sort((a, b) => a.urunFiyat - b.urunFiyat)
+          break
+        case 'fiyat-azalan':
+          sonuc.sort((a, b) => b.urunFiyat - a.urunFiyat)
+          break
+      }
+
+      return sonuc
+    })
 
     // Methods
     const getMarkaAdi = (markaId) => {
@@ -206,6 +269,10 @@ export default {
       showForm,
       editMode,
       formData,
+      secilenKategori,
+      secilenMarka,
+      siralama,
+      filtrelenmisUrunler,
       getMarkaAdi,
       getKategoriAdi,
       yeniUrunEkle,
@@ -304,5 +371,24 @@ export default {
 
 .add-button:hover {
   background: #45a049;
+}
+
+.filtreler {
+  margin-bottom: 20px;
+}
+
+.filtre-grup {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.filtre-grup select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  min-width: 200px;
+  background-color: white;
 }
 </style>

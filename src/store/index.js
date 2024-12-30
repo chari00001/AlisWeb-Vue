@@ -46,7 +46,9 @@ export default createStore({
 
         // Sonra backend'den yüklemeyi dene
         try {
-          const response = await fetch("http://localhost:3000/api/siparisler");
+          const response = await fetch("http://localhost:8000/siparis");
+          console.log(response);
+
           if (response.ok) {
             const data = await response.json();
             commit("siparis/setSiparisler", data, { root: true });

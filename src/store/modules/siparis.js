@@ -1,91 +1,130 @@
-import { initialSiparisler } from "./initialStates";
+import api from "@/services/api";
+
+const state = {
+  siparisler: [],
+  loading: false,
+  error: null,
+};
+
+const mutations = {
+  SET_SIPARISLER(state, siparisler) {
+    state.siparisler = siparisler;
+  },
+  SET_LOADING(state, loading) {
+    state.loading = loading;
+  },
+  SET_ERROR(state, error) {
+    state.error = error;
+  },
+};
+
+const actions = {
+  async fetchUserOrders({ commit }, userId) {
+    try {
+      commit("SET_LOADING", true);
+      console.log("Siparişler getiriliyor...");
+
+      // Siparişleri getir
+      const siparisResponse = await api.get(`/auth/siparisler/${userId}`);
+      let siparisler = siparisResponse.data;
+      console.log("Gelen siparişler:", siparisler);
+
+      // Her sipariş için ürün detaylarını al
+      const siparislerWithDetails = await Promise.all(
+        siparisler.map(async (siparis) => {
+          try {
+            // Eğer sipariş veya ürünler dizisi yoksa direkt siparişi döndür
+            if (!siparis?.urunler?.length) {
+              console.warn(
+                `Sipariş için ürün bilgisi bulunamadı (ID: ${siparis?.id})`
+              );
+              return {
+                ...siparis,
+                urunler: [],
+              };
+            }
+
+            // Siparişin ürünleri için detayları al
+            const urunlerWithDetails = await Promise.all(
+              siparis.urunler.map(async (urun) => {
+                try {
+                  if (!urun?.urunId) {
+                    console.warn("Ürün ID'si bulunamadı:", urun);
+                    return urun;
+                  }
+
+                  console.log(`Ürün detayı getiriliyor (ID: ${urun.urunId})`);
+                  const urunResponse = await api.get(`/urun/${urun.urunId}`);
+                  const urunDetay = urunResponse.data;
+                  console.log("Gelen ürün detayı:", urunDetay);
+
+                  return {
+                    ...urun,
+                    urun: {
+                      id: urunDetay.id,
+                      ad: urunDetay.urunAdi,
+                      aciklama: urunDetay.aciklama,
+                      fiyat: urunDetay.urunFiyat,
+                      resimUrl: urunDetay.resimUrl,
+                      kategoriId: urunDetay.kategoriId,
+                      durum: urunDetay.durum,
+                      olusturmaZamani: urunDetay.olusturmaZamani,
+                      guncellenmeZamani: urunDetay.guncellenmeZamani,
+                    },
+                  };
+                } catch (error) {
+                  console.error(
+                    `Ürün detayı alınamadı (ID: ${urun?.urunId}):`,
+                    error
+                  );
+                  return urun;
+                }
+              })
+            );
+
+            return {
+              ...siparis,
+              urunler: urunlerWithDetails,
+            };
+          } catch (error) {
+            console.error(
+              `Sipariş işlenirken hata (ID: ${siparis?.id}):`,
+              error
+            );
+            return {
+              ...siparis,
+              urunler: [],
+            };
+          }
+        })
+      );
+
+      console.log("İşlenmiş siparişler:", siparislerWithDetails);
+      commit("SET_SIPARISLER", siparislerWithDetails);
+      return siparislerWithDetails;
+    } catch (error) {
+      console.error("Siparişler yüklenirken hata:", error);
+      commit("SET_ERROR", "Siparişler yüklenemedi");
+      throw error;
+    } finally {
+      commit("SET_LOADING", false);
+    }
+  },
+};
+
+const getters = {
+  siparisler: (state) => state.siparisler,
+  loading: (state) => state.loading,
+  error: (state) => state.error,
+  getSiparisByDurum: (state) => (durum) => {
+    return state.siparisler.filter((siparis) => siparis.durum === durum);
+  },
+};
 
 export default {
   namespaced: true,
-
-  state: {
-    siparisler:
-      JSON.parse(localStorage.getItem("siparisler")) || initialSiparisler,
-    loading: false,
-    error: null,
-  },
-
-  mutations: {
-    setSiparisler(state, siparisler) {
-      state.siparisler = siparisler;
-      localStorage.setItem("siparisler", JSON.stringify(siparisler));
-    },
-    addSiparis(state, siparis) {
-      state.siparisler.unshift(siparis);
-      localStorage.setItem("siparisler", JSON.stringify(state.siparisler));
-    },
-    setLoading(state, loading) {
-      state.loading = loading;
-    },
-    setError(state, error) {
-      state.error = error;
-    },
-  },
-
-  getters: {
-    allSiparisler: (state) => state.siparisler,
-    getSiparisByMusteriId: (state) => (musteriId) => {
-      return state.siparisler.filter(
-        (siparis) => siparis.musteriId === musteriId
-      );
-    },
-    getSiparisCount: (state) => state.siparisler.length,
-  },
-
-  actions: {
-    async loadSiparisler({ commit }) {
-      commit("setLoading", true);
-      try {
-        // Önce localStorage'dan yükle
-        const savedSiparisler = localStorage.getItem("siparisler");
-        if (savedSiparisler) {
-          commit("setSiparisler", JSON.parse(savedSiparisler));
-        }
-
-        // Sonra backend'den yüklemeyi dene
-        try {
-          const response = await fetch("http://localhost:3000/api/siparisler");
-          if (response.ok) {
-            const data = await response.json();
-            commit("setSiparisler", data);
-          }
-        } catch (error) {
-          console.warn("Backend'den siparişler yüklenemedi:", error);
-        }
-      } catch (error) {
-        console.error("Siparişler yüklenirken hata:", error);
-        commit("setError", "Siparişler yüklenemedi");
-      } finally {
-        commit("setLoading", false);
-      }
-    },
-
-    async createSiparis({ commit, state }, siparisData) {
-      try {
-        // Yeni sipariş oluştur
-        const yeniSiparis = {
-          id: Date.now().toString(),
-          ...siparisData,
-          urunler: siparisData.urunler.map((urun) => ({
-            ...urun,
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          })),
-        };
-
-        // Store'a ekle
-        commit("addSiparis", yeniSiparis);
-        console.log("Yeni sipariş eklendi:", yeniSiparis);
-
-        return yeniSiparis;
-      } catch (error) {
-        console.error("Sipariş oluşturma hatası:", error);
-        throw new Error("Sipariş oluşturulurken bir hata oluştu");
-      }
-    },
-  },
+  state,
+  mutations,
+  actions,
+  getters,
 };

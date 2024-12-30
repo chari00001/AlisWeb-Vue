@@ -1,175 +1,160 @@
-export default {
-  namespaced: true,
+import api from "@/services/api";
 
-  state: {
-    sepetUrunleri: [],
-    loading: false,
-    error: null,
+const state = {
+  sepetItems: [],
+  loading: false,
+  error: null,
+};
+
+const getters = {
+  sepetUrunleri: (state) => state.sepetItems,
+  sepetUrunSayisi: (state) => state.sepetItems.length,
+  sepetToplamTutar: (state) => {
+    return state.sepetItems.reduce((total, item) => {
+      const fiyat = item?.urun?.urunFiyat || 0;
+      const miktar = item?.miktar || 0;
+      return total + fiyat * miktar;
+    }, 0);
   },
+  loading: (state) => state.loading,
+  error: (state) => state.error,
+};
 
-  mutations: {
-    setSepetUrunleri(state, urunler) {
-      state.sepetUrunleri = urunler;
-    },
-    addToSepet(state, { urun, miktar }) {
-      const existingItem = state.sepetUrunleri.find(
-        (item) => item.urun.id === urun.id
-      );
-      if (existingItem) {
-        existingItem.miktar += miktar;
-      } else {
-        state.sepetUrunleri.push({ urun, miktar });
-      }
+const mutations = {
+  SET_SEPET_ITEMS(state, items) {
+    state.sepetItems = items;
+  },
+  ADD_TO_CART(state, item) {
+    const existingItem = state.sepetItems.find(
+      (i) => i?.urun?.id === item?.urun?.id
+    );
+    if (existingItem) {
+      existingItem.miktar += item.miktar;
+    } else {
+      state.sepetItems.push(item);
+    }
+    // Sepeti localStorage'a kaydet
+    localStorage.setItem("sepet", JSON.stringify(state.sepetItems));
+  },
+  UPDATE_QUANTITY(state, { urunId, miktar }) {
+    const item = state.sepetItems.find((i) => i?.urun?.id === urunId);
+    if (item) {
+      item.miktar = miktar;
       // Sepeti localStorage'a kaydet
-      localStorage.setItem("sepet", JSON.stringify(state.sepetUrunleri));
-    },
-    removeFromSepet(state, urunId) {
-      state.sepetUrunleri = state.sepetUrunleri.filter(
-        (item) => item.urun.id !== urunId
-      );
-      // Sepeti localStorage'a kaydet
-      localStorage.setItem("sepet", JSON.stringify(state.sepetUrunleri));
-    },
-    updateMiktar(state, { urunId, miktar }) {
-      const item = state.sepetUrunleri.find((item) => item.urun.id === urunId);
-      if (item) {
-        item.miktar = miktar;
-        // Sepeti localStorage'a kaydet
-        localStorage.setItem("sepet", JSON.stringify(state.sepetUrunleri));
-      }
-    },
-    clearSepet(state) {
-      state.sepetUrunleri = [];
-      // Sepeti localStorage'dan temizle
-      localStorage.removeItem("sepet");
-    },
-    setLoading(state, loading) {
-      state.loading = loading;
-    },
-    setError(state, error) {
-      state.error = error;
-    },
+      localStorage.setItem("sepet", JSON.stringify(state.sepetItems));
+    }
   },
-
-  getters: {
-    sepetUrunleri: (state) => state.sepetUrunleri || [],
-    sepetToplamTutar: (state) => {
-      return (state.sepetUrunleri || []).reduce((total, item) => {
-        return total + item.urun.urunFiyat * item.miktar;
-      }, 0);
-    },
-    sepetUrunSayisi: (state) => {
-      return (state.sepetUrunleri || []).reduce(
-        (total, item) => total + item.miktar,
-        0
-      );
-    },
+  REMOVE_FROM_CART(state, urunId) {
+    state.sepetItems = state.sepetItems.filter((i) => i?.urun?.id !== urunId);
+    // Sepeti localStorage'a kaydet
+    localStorage.setItem("sepet", JSON.stringify(state.sepetItems));
   },
+  CLEAR_CART(state) {
+    state.sepetItems = [];
+    // Sepeti localStorage'dan sil
+    localStorage.removeItem("sepet");
+  },
+  SET_LOADING(state, loading) {
+    state.loading = loading;
+  },
+  SET_ERROR(state, error) {
+    state.error = error;
+  },
+};
 
-  actions: {
-    // Sepete ürün ekleme
-    addItemToCart({ commit }, { urun, miktar = 1 }) {
-      try {
-        commit("addToSepet", { urun, miktar });
-      } catch (error) {
-        commit("setError", "Ürün sepete eklenirken hata oluştu");
-        console.error("Sepete ekleme hatası:", error);
+const actions = {
+  loadSepet({ commit }) {
+    try {
+      const sepet = localStorage.getItem("sepet");
+      if (sepet) {
+        commit("SET_SEPET_ITEMS", JSON.parse(sepet));
       }
-    },
-
-    // Sepetten ürün çıkarma
-    removeItemFromCart({ commit }, urunId) {
-      try {
-        commit("removeFromSepet", urunId);
-      } catch (error) {
-        commit("setError", "Ürün sepetten çıkarılırken hata oluştu");
-        console.error("Sepetten çıkarma hatası:", error);
+    } catch (error) {
+      console.error("Sepet yüklenirken hata:", error);
+      commit("SET_ERROR", "Sepet yüklenemedi");
+    }
+  },
+  addItemToCart({ commit }, item) {
+    try {
+      commit("ADD_TO_CART", item);
+    } catch (error) {
+      console.error("Ürün sepete eklenirken hata:", error);
+      commit("SET_ERROR", "Ürün sepete eklenemedi");
+    }
+  },
+  updateItemQuantity({ commit }, { urunId, miktar }) {
+    try {
+      commit("UPDATE_QUANTITY", { urunId, miktar });
+    } catch (error) {
+      console.error("Ürün miktarı güncellenirken hata:", error);
+      commit("SET_ERROR", "Ürün miktarı güncellenemedi");
+    }
+  },
+  removeItemFromCart({ commit }, urunId) {
+    try {
+      commit("REMOVE_FROM_CART", urunId);
+    } catch (error) {
+      console.error("Ürün sepetten çıkarılırken hata:", error);
+      commit("SET_ERROR", "Ürün sepetten çıkarılamadı");
+    }
+  },
+  clearCart({ commit }) {
+    try {
+      commit("CLEAR_CART");
+    } catch (error) {
+      console.error("Sepet temizlenirken hata:", error);
+      commit("SET_ERROR", "Sepet temizlenemedi");
+    }
+  },
+  async siparisOlustur({ commit, state, rootState }) {
+    try {
+      if (!rootState.auth.user || !rootState.auth.user.id) {
+        throw new Error("Kullanıcı bilgisi bulunamadı");
       }
-    },
 
-    // Ürün miktarını güncelleme
-    updateItemQuantity({ commit }, { urunId, miktar }) {
-      try {
-        commit("updateMiktar", { urunId, miktar });
-      } catch (error) {
-        commit("setError", "Ürün miktarı güncellenirken hata oluştu");
-        console.error("Miktar güncelleme hatası:", error);
-      }
-    },
+      commit("SET_LOADING", true);
 
-    // Sepeti temizleme
-    clearCart({ commit }) {
-      try {
-        commit("clearSepet");
-      } catch (error) {
-        commit("setError", "Sepet temizlenirken hata oluştu");
-        console.error("Sepet temizleme hatası:", error);
-      }
-    },
-
-    // Sayfa yüklendiğinde localStorage'dan sepeti yükle
-    loadSepet({ commit }) {
-      try {
-        const savedSepet = localStorage.getItem("sepet");
-        if (savedSepet) {
-          commit("setSepetUrunleri", JSON.parse(savedSepet));
-        }
-      } catch (error) {
-        commit("setError", "Sepet yüklenirken hata oluştu");
-        console.error("Sepet yükleme hatası:", error);
-      }
-    },
-
-    // Sipariş oluşturma
-    async siparisOlustur({ commit, state, rootState }) {
-      try {
+      // Her ürün için ayrı sipariş oluştur
+      const siparisPromises = state.sepetItems.map(async (item) => {
         const siparisData = {
+          urunAdet: parseInt(item.miktar),
+          sabitFiyat: parseFloat(item.urun.urunFiyat),
+          toplamFiyat: parseFloat(item.urun.urunFiyat * item.miktar),
           musteriId: rootState.auth.user.id,
-          urunler: state.sepetUrunleri.map((item) => ({
-            urunId: item.urun.id,
-            urunAdet: item.miktar,
-            sabitFiyat: item.urun.urunFiyat,
-            toplamFiyat: item.urun.urunFiyat * item.miktar,
-          })),
-          toplamTutar: state.sepetUrunleri.reduce(
-            (total, item) => total + item.urun.urunFiyat * item.miktar,
-            0
-          ),
-          durum: "Onaylandı",
-          olusturmaZamani: new Date().toISOString(),
-          guncellemeZamani: new Date().toISOString(),
+          urunId: item.urun.id,
+          durum: "1",
         };
 
-        // Backend'e sipariş oluşturma isteği gönder
-        try {
-          const response = await fetch("http://localhost:3000/api/siparisler", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(siparisData),
-          });
+        console.log("Gönderilen sipariş verisi:", siparisData);
 
-          if (!response.ok) {
-            console.warn("Sipariş backend'e kaydedilemedi");
-          }
-        } catch (error) {
-          console.warn("Backend bağlantı hatası:", error);
-        }
+        const response = await api.post("/siparis", siparisData);
+        return response.data;
+      });
 
-        // Store'da siparişi oluştur
-        await this.dispatch("siparis/createSiparis", siparisData, {
-          root: true,
-        });
+      const yeniSiparisler = await Promise.all(siparisPromises);
+      console.log("Oluşturulan siparişler:", yeniSiparisler);
 
-        // Sepeti temizle
-        commit("setSepetUrunleri", []);
-        localStorage.removeItem("sepet");
+      // Sepeti temizle
+      commit("CLEAR_CART");
 
-        return siparisData;
-      } catch (error) {
-        throw new Error("Sipariş oluşturulurken bir hata oluştu");
-      }
-    },
+      return yeniSiparisler;
+    } catch (error) {
+      console.error("Sipariş oluşturma hatası:", error);
+      commit(
+        "SET_ERROR",
+        error.response?.data?.detail || "Sipariş oluşturulurken bir hata oluştu"
+      );
+      throw error;
+    } finally {
+      commit("SET_LOADING", false);
+    }
   },
+};
+
+export default {
+  namespaced: true,
+  state,
+  getters,
+  mutations,
+  actions,
 };

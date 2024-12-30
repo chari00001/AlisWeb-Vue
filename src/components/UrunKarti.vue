@@ -8,7 +8,7 @@
           @click.stop="addToCart"
         >
           <i class="fas fa-shopping-cart"></i>
-          {{ urun.durum === 'aktif' ? 'Sepete Ekle' : 'Stokta Yok' }}
+          {{ urun.durum == '1' ? 'Sepete Ekle' : 'Stokta Yok' }}
         </button>
       </div>
     </div>
@@ -18,8 +18,8 @@
       <p class="urun-category">{{ kategoriAdi }}</p>
       <div class="urun-details">
         <span class="urun-price">{{ formatPrice(urun.urunFiyat) }} TL</span>
-        <span class="urun-stock" :class="{ 'out-of-stock': urun.durum.toLowerCase() !== 'aktif' }">
-          {{ urun.durum.toLowerCase() === 'aktif' ? 'Stokta var' : 'Stokta yok' }}
+        <span class="urun-stock" :class="{ 'out-of-stock': urun.durum !== '1' }">
+          {{ urun.durum === '1' ? 'Stokta var' : 'Stokta yok' }}
         </span>
       </div>
     </div>

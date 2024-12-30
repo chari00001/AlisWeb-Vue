@@ -8,7 +8,7 @@
 
       <form @submit.prevent="handleRegister" class="auth-form">
         <div class="form-group">
-          <label for="name">Ad Soyad</label>
+          <label for="name">Ad</label>
           <div class="input-group">
             <i class="fas fa-user"></i>
             <input 
@@ -16,7 +16,21 @@
               id="name" 
               v-model="name" 
               required
-              placeholder="Adınız ve soyadınız"
+              placeholder="Adınız"
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="surname">Soyad</label>
+          <div class="input-group">
+            <i class="fas fa-user"></i>
+            <input 
+              type="text" 
+              id="surname" 
+              v-model="surname" 
+              required
+              placeholder="Soyadınız"
             >
           </div>
         </div>
@@ -32,6 +46,43 @@
               required
               placeholder="E-posta adresiniz"
             >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Telefon</label>
+          <div class="input-group">
+            <i class="fas fa-phone"></i>
+            <input 
+              type="tel" 
+              id="phone" 
+              v-model="phone" 
+              placeholder="Telefon numaranız"
+            >
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="address">Adres</label>
+          <div class="input-group">
+            <i class="fas fa-map-marker-alt"></i>
+            <textarea 
+              id="address" 
+              v-model="address" 
+              placeholder="Adresiniz"
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="gender">Cinsiyet</label>
+          <div class="input-group">
+            <i class="fas fa-venus-mars"></i>
+            <select id="gender" v-model="gender">
+              <option value="E">Erkek</option>
+              <option value="K">Kadın</option>
+            </select>
           </div>
         </div>
 
@@ -104,8 +155,12 @@ const router = useRouter()
 const toast = useToast()
 
 const name = ref('')
+const surname = ref('')
 const email = ref('')
 const password = ref('')
+const phone = ref('')
+const address = ref('')
+const gender = ref('E')
 const confirmPassword = ref('')
 const acceptTerms = ref(false)
 const showPassword = ref(false)
@@ -113,6 +168,7 @@ const loading = ref(false)
 
 const isFormValid = computed(() => {
   return name.value.length > 0 &&
+         surname.value.length > 0 &&
          email.value.length > 0 &&
          password.value.length >= 6 &&
          password.value === confirmPassword.value &&
@@ -127,15 +183,41 @@ const handleRegister = async () => {
 
   try {
     loading.value = true
-    await store.dispatch('auth/register', {
-      name: name.value,
-      email: email.value,
-      password: password.value
-    })
+    const userData = {
+      eposta: email.value,
+      sifre: password.value,
+      adi: name.value,
+      soyadi: surname.value,
+      telefon: phone.value || "",
+      adres: address.value || "",
+      cinsiyet: gender.value
+    }
+
+    console.log('Gönderilen veri:', userData)
+    
+    const response = await store.dispatch('auth/register', userData)
+    console.log('Kayıt başarılı:', response)
     toast.success('Kayıt işlemi başarılı!')
     router.push('/login')
   } catch (error) {
-    toast.error(error.message || 'Kayıt olurken bir hata oluştu')
+    console.error('Kayıt hatası:', error)
+    
+    if (error.response?.status === 422) {
+      const details = error.response.data.detail
+      if (Array.isArray(details)) {
+        details.forEach(detail => {
+          const field = detail.loc[1]
+          const msg = detail.msg
+          toast.error(`${field}: ${msg}`)
+        })
+      } else {
+        toast.error('Form verilerinde hata var')
+      }
+    } else if (error.response?.status === 400) {
+      toast.error(error.response.data.detail || 'Geçersiz kayıt bilgileri')
+    } else {
+      toast.error('Kayıt olurken bir hata oluştu')
+    }
   } finally {
     loading.value = false
   }
@@ -373,6 +455,48 @@ const handleRegister = async () => {
 @media (prefers-color-scheme: dark) {
   .terms {
     color: #ccc;
+  }
+}
+
+.input-group textarea {
+  width: 100%;
+  padding: 0.8rem 1rem 0.8rem 2.5rem;
+  border: 2px solid #e1e1e1;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.input-group select {
+  width: 100%;
+  padding: 0.8rem 1rem 0.8rem 2.5rem;
+  border: 2px solid #e1e1e1;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background-color: white;
+  cursor: pointer;
+}
+
+.input-group textarea:focus,
+.input-group select:focus {
+  border-color: #42b983;
+  box-shadow: 0 0 0 3px rgba(66, 185, 131, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .input-group textarea,
+  .input-group select {
+    background: #34495e;
+    border-color: #455d7a;
+    color: white;
+  }
+
+  .input-group select option {
+    background: #34495e;
+    color: white;
   }
 }
 </style> 

@@ -1,5 +1,5 @@
 import { initialUrunler } from "./initialStates";
-
+import axios from "axios";
 export default {
   namespaced: true,
 
@@ -55,15 +55,13 @@ export default {
       commit("setLoading", true);
       commit("setError", null);
       try {
-        const response = await fetch("http://localhost:8000/urun", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(urunData),
-        });
-        if (!response.ok) throw new Error("Ürün eklenirken hata oluştu");
-        const data = await response.json();
+        const response = await axios.post(
+          "http://localhost:8000/urun",
+          urunData
+        );
+        if (response.status !== 200)
+          throw new Error("Ürün eklenirken hata oluştu");
+        const data = response.data;
         commit("addUrun", data);
       } catch (error) {
         console.error("Ürün eklenirken hata:", error);

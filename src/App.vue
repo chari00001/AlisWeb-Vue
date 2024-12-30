@@ -7,15 +7,17 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { onMounted } from 'vue'
+import { useStore } from 'vuex'
 import Navbar from './components/Navbar.vue'
 
-export default {
-  name: 'App',
-  components: {
-    Navbar
-  }
-}
+const store = useStore()
+
+onMounted(() => {
+  // Sayfa yüklendiğinde kullanıcı oturumunu kontrol et
+  store.dispatch('auth/checkAuth')
+})
 </script>
 
 <style>

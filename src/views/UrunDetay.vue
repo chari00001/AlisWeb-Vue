@@ -11,25 +11,26 @@
       <div class="meta-bilgiler">
         <p class="marka">Marka: {{ markaAdi }}</p>
         <p class="kategori">Kategori: {{ kategoriAdi }}</p>
-        <p class="stok">Stok Durumu: {{ urun.stokMiktari }} adet</p>
-        <p class="durum" :class="urun.durum">Durum: {{ urun.durum }}</p>
+        <p class="stok">Stok Durumu: 100 adet</p>
+        <p class="durum" :class="urun.durum === '1' ? 'aktif' : 'pasif'">
+          Durum: {{ urun.durum === '1' ? 'Satışta' : 'Satışta Değil' }}
+        </p>
       </div>
       
       <div class="fiyat-bilgisi">
         <h2 class="fiyat">{{ formatPrice(urun.urunFiyat) }} TL</h2>
         
-        <div class="satin-alma" v-if="urun.durum.toLowerCase() === 'aktif'">
+        <div class="satin-alma" v-if="urun.durum === '1'">
           <div class="adet-secimi">
             <button @click="azaltAdet" :disabled="adet <= 1">-</button>
             <span>{{ adet }}</span>
             <button @click="arttirAdet" :disabled="adet >= urun.stokMiktari">+</button>
           </div>
           
-          <button class="sepete-ekle" @click="sepeteEkle" :disabled="!urun.stokMiktari">
+          <button class="sepete-ekle" @click="sepeteEkle" >
             Sepete Ekle
           </button>
         </div>
-        <p v-else class="stok-yok">Bu ürün şu anda satışta değil</p>
       </div>
     </div>
   </div>
@@ -53,6 +54,10 @@ const toast = useToast()
 const adet = ref(1)
 
 const urun = computed(() => store.getters['urun/getUrunById'](route.params.id))
+
+console.log(urun.value);
+
+
 const loading = computed(() => store.state.urun.loading)
 const markaAdi = computed(() => {
   const marka = store.state.marka.markalar.find(m => m.id === urun.value?.markaId)
@@ -80,14 +85,21 @@ const arttirAdet = () => {
 }
 
 const sepeteEkle = () => {
-  if (urun.value.durum === 'aktif' && adet.value <= urun.value.stokMiktari) {
-    store.dispatch('cart/addItemToCart', {
-      urunId: urun.value.id,
-      urunAdi: urun.value.urunAdi,
-      fiyat: urun.value.urunFiyat,
-      quantity: adet.value
+  if (urun.value.durum === '1') {
+    store.dispatch('sepet/addItemToCart', {
+      urun: {
+        id: urun.value.id,
+        urunAdi: urun.value.urunAdi,
+        urunFiyat: urun.value.urunFiyat,
+        urunResmi: urun.value.urunResmi || `https://picsum.photos/1000/1000?random=${Math.floor(Math.random() * 40) + 1}`
+      },
+      miktar: adet.value
     })
     toast.success('Ürün sepete eklendi')
+  } else if (adet.value > urun.value.stokMiktari) {
+    toast.error('Stok miktarından fazla ürün ekleyemezsiniz')
+  } else {
+    toast.error('Bu ürün satışta değil')
   }
 }
 

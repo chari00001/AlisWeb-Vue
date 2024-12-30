@@ -7,12 +7,14 @@
       
       <div class="profile-info">
         <div class="avatar">
-          <img :src="`https://api.dicebear.com/6.x/initials/svg?seed=${user?.email || 'Guest'}`" :alt="user?.name">
+          <img :src="`https://api.dicebear.com/6.x/initials/svg?seed=${user?.eposta || 'Guest'}`" :alt="user?.adi">
         </div>
         
         <div class="user-details">
-          <h1>{{ user?.name || 'Misafir Kullanıcı' }}</h1>
-          <p class="email">{{ user?.email || 'misafir@example.com' }}</p>
+          <h1>{{ user ? `${user.adi} ${user.soyadi}` : 'Misafir Kullanıcı' }}</h1>
+          <p class="email">{{ user?.eposta || 'misafir@example.com' }}</p>
+          <p v-if="user?.telefon" class="phone">{{ user.telefon }}</p>
+          <p v-if="user?.adres" class="address">{{ user.adres }}</p>
         </div>
       </div>
     </div>
@@ -21,7 +23,7 @@
       <div class="stat-card">
         <i class="fas fa-shopping-bag"></i>
         <div class="stat-info">
-          <span class="stat-value">{{ orders?.length }}</span>
+          <span class="stat-value">{{ siparisler?.length || 0 }}</span>
           <span class="stat-label">Toplam Sipariş</span>
         </div>
       </div>
@@ -29,7 +31,7 @@
       <div class="stat-card">
         <i class="fas fa-money-bill-wave"></i>
         <div class="stat-info">
-          <span class="stat-value">{{ calculateTotalSpent }} TL</span>
+          <span class="stat-value">{{ formatPrice(calculateTotalSpent) }} TL</span>
           <span class="stat-label">Toplam Harcama</span>
         </div>
       </div>
@@ -38,39 +40,61 @@
     <div class="orders-section">
       <h2>Siparişlerim</h2>
       
-      <div v-if="orders?.length > 0" class="orders-list">
-        <div v-for="order in orders" :key="order.id" class="order-card">
+      <div v-if="siparisler?.length > 0" class="orders-list">
+        <div v-for="siparis in siparisler" :key="siparis.id" class="order-card">
           <div class="order-header">
-            <span class="order-id">Sipariş #{{ order.id }}</span>
-            <span class="order-date">{{ formatDate(order.olusturmaZamani) }}</span>
+            <span class="order-id">Sipariş #{{ siparis.id }}</span>
+            <div class="order-info">
+              <span class="order-status" :class="siparis.durum">
+                {{ siparis.durum === '1' ? 'Onaylandı' : 
+                   siparis.durum === '2' ? 'Hazırlanıyor' :
+                   siparis.durum === '3' ? 'Kargoda' :
+                   siparis.durum === '4' ? 'Tamamlandı' : 'Beklemede' }}
+              </span>
+              <span class="order-date">{{ formatDate(siparis.olusturmaZamani) }}</span>
+            </div>
           </div>
           
           <div class="order-items">
-            <div v-for="item in order.urunler" :key="item.urunId" class="order-item">
+            <div v-if="siparis.urun" class="order-item">
               <div class="item-image">
-                <img :src="`https://picsum.photos/seed/${item.urunId}/1000/1000`" :alt="item.urunAdi">
+                <img :src="siparis.urun.resimUrl || `https://picsum.photos/seed/${siparis.urun.id}/1000/1000`" :alt="siparis.urun.ad">
               </div>
               
               <div class="item-details">
-                <h3>{{ item.urunAdi || 'Ürün' }}</h3>
-                <p class="item-quantity">{{ item.urunAdet }} adet</p>
-                <p class="item-price">{{ formatPrice(item.sabitFiyat * item.urunAdet) }} TL</p>
+                <h3>{{ siparis.urun.ad || 'Ürün' }}</h3>
+                <p class="item-description">{{ siparis.urun.aciklama || 'Ürün açıklaması mevcut değil' }}</p>
+                <div class="item-specs">
+                  <span class="item-quantity">{{ siparis.urunAdet }} adet</span>
+                  <span class="item-price">Birim Fiyat: {{ formatPrice(siparis.sabitFiyat) }} TL</span>
+                  <span class="item-total">Toplam: {{ formatPrice(siparis.toplamFiyat) }} TL</span>
+                </div>
+              </div>
+            </div>
+            
+            <div v-if="siparis.urunler && siparis.urunler.length > 0">
+              <div v-for="urun in siparis.urunler" :key="urun.id" class="order-item">
+                <div class="item-image">
+                  <img :src="urun.urun?.resimUrl || `https://picsum.photos/seed/${urun.id}/1000/1000`" :alt="urun.urun?.ad || 'Ürün'">
+                </div>
+                
+                <div class="item-details">
+                  <h3>{{ urun.urun?.ad || 'Ürün' }}</h3>
+                  <p class="item-description">{{ urun.urun?.aciklama || 'Ürün açıklaması mevcut değil' }}</p>
+                  <div class="item-specs">
+                    <span class="item-quantity">{{ urun.urunAdet }} adet</span>
+                    <span class="item-price">Birim Fiyat: {{ formatPrice(urun.sabitFiyat) }} TL</span>
+                    <span class="item-total">Toplam: {{ formatPrice(urun.sabitFiyat * urun.urunAdet) }} TL</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           
           <div class="order-summary">
             <div class="summary-item">
-              <span>Ara Toplam:</span>
-              <span>{{ formatPrice(calculateSubtotal(order)) }} TL</span>
-            </div>
-            <div class="summary-item">
-              <span>KDV (18%):</span>
-              <span>{{ formatPrice(calculateVat(order)) }} TL</span>
-            </div>
-            <div class="summary-item total">
               <span>Toplam:</span>
-              <span>{{ formatPrice(calculateTotal(order)) }} TL</span>
+              <span>{{ formatPrice(siparis.toplamFiyat) }} TL</span>
             </div>
           </div>
         </div>
@@ -101,29 +125,40 @@ const store = useStore()
 const router = useRouter()
 const toast = useToast()
 
-const loading = computed(() => store.state.loading)
-const error = computed(() => store.state.error)
+const loading = computed(() => store.state.siparis.loading)
+const error = computed(() => store.state.siparis.error)
 const user = computed(() => store.state.auth.user)
-const orders = computed(() => store.state.siparis.siparisler || [])
+const siparisler = computed(() => store.state.siparis.siparisler || [])
 
-const calculateSubtotal = (order) => {
-  if (!order || !order.urunler) return 0
-  return order.urunler.reduce((total, item) => {
-    return total + (item.sabitFiyat * item.urunAdet)
-  }, 0)
+const loadSiparisler = async () => {
+  try {
+    if (!user.value?.id) {
+      toast.error('Kullanıcı bilgisi bulunamadı')
+      return
+    }
+    await store.dispatch('siparis/fetchUserOrders', user.value.id)
+  } catch (error) {
+    console.error('Siparişler yüklenirken hata:', error)
+    toast.error('Siparişler yüklenemedi')
+  }
 }
 
-const calculateVat = (order) => {
-  return calculateSubtotal(order) * 0.18
+const calculateSubtotal = (siparis) => {
+  if (!siparis || !siparis.urunAdet || !siparis.sabitFiyat) return 0
+  return siparis.urunAdet * siparis.sabitFiyat
 }
 
-const calculateTotal = (order) => {
-  return calculateSubtotal(order) + calculateVat(order)
+const calculateVat = (siparis) => {
+  return calculateSubtotal(siparis) * 0.18
+}
+
+const calculateTotal = (siparis) => {
+  return calculateSubtotal(siparis) + calculateVat(siparis)
 }
 
 const calculateTotalSpent = computed(() => {
-  return orders.value.reduce((total, order) => {
-    return total + calculateTotal(order)
+  return siparisler.value.reduce((total, siparis) => {
+    return total + calculateTotal(siparis)
   }, 0)
 })
 
@@ -138,15 +173,6 @@ const formatDate = (date) => {
     month: 'long',
     day: 'numeric'
   })
-}
-
-const loadSiparisler = async () => {
-  try {
-    await store.dispatch('loadSiparisler')
-  } catch (error) {
-    console.error('Siparişler yüklenirken hata:', error)
-    toast.error('Siparişler yüklenemedi')
-  }
 }
 
 onMounted(async () => {
@@ -224,6 +250,38 @@ onMounted(async () => {
   color: #718096;
   margin: 0;
   margin-bottom: 0.5rem;
+}
+
+.phone {
+  color: #718096;
+  margin: 0;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phone::before {
+  content: '\f095';
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+
+.address {
+  color: #718096;
+  margin: 0;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.address::before {
+  content: '\f3c5';
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  font-size: 0.9rem;
 }
 
 .member-since {
@@ -346,6 +404,7 @@ onMounted(async () => {
 
 .item-details {
   flex: 1;
+  padding: 1rem;
 }
 
 .item-details h3 {
@@ -355,17 +414,65 @@ onMounted(async () => {
   margin-bottom: 0.3rem;
 }
 
-.item-quantity {
-  color: #718096;
+.item-description {
+  color: #666;
   font-size: 0.9rem;
-  margin: 0;
-  margin-bottom: 0.3rem;
+  margin: 0.5rem 0;
+  line-height: 1.4;
 }
 
-.item-price {
-  color: #4299e1;
+.item-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.item-quantity {
+  background: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  color: #374151;
+}
+
+.item-price, .item-total {
+  color: #374151;
+}
+
+.item-status {
+  margin-top: 0.5rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
   font-weight: 500;
-  margin: 0;
+  text-transform: uppercase;
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.item-status.beklemede .status-badge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.item-status.hazirlaniyor .status-badge {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.item-status.tamamlandi .status-badge {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.item-status.iptal .status-badge {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .order-summary {
@@ -429,6 +536,40 @@ onMounted(async () => {
   background: #3182ce;
 }
 
+.order-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.order-status {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.order-status[class="1"] {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.order-status[class="2"] {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.order-status[class="3"] {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.order-status[class="4"] {
+  background: #f3f4f6;
+  color: #374151;
+}
+
 @media (max-width: 768px) {
   .profile-container {
     padding: 1rem;
@@ -460,6 +601,16 @@ onMounted(async () => {
   .item-image {
     width: 120px;
     height: 120px;
+  }
+
+  .item-specs {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .item-image {
+    width: 80px;
+    height: 80px;
   }
 }
 </style>

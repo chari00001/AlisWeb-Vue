@@ -7,6 +7,7 @@ import Kaydol from "../views/Kaydol.vue";
 import Odeme from "../views/Odeme.vue";
 import Profil from "../views/Profil.vue";
 import UrunListesi from "../views/UrunListesi.vue";
+import UrunEkle from "../views/Urun-Ekle.vue";
 import store from "../store";
 
 const routes = [
@@ -51,6 +52,11 @@ const routes = [
     name: "Profil",
     component: Profil,
     meta: { requiresAuth: true },
+  },
+  {
+    path: "/urun-ekle",
+    name: "UrunEkle",
+    component: UrunEkle,
   },
 ];
 

@@ -91,10 +91,14 @@ const handleLogin = async () => {
 
   try {
     loading.value = true
-    const response = await store.dispatch('auth/login', {
-      email: email.value,
-      password: password.value
-    })
+    const credentials = {
+      eposta: email.value,
+      sifre: password.value
+    }
+
+    console.log('Giriş bilgileri:', credentials)
+    
+    const response = await store.dispatch('auth/login', credentials)
     console.log('Giriş başarılı:', response)
     
     toast.success('Başarıyla giriş yaptınız!')
@@ -107,9 +111,21 @@ const handleLogin = async () => {
     router.push(redirectPath)
   } catch (error) {
     console.error('Giriş hatası:', error)
-    if (error.message === 'User not found') {
+    
+    if (error.response?.status === 422) {
+      const details = error.response.data.detail
+      if (Array.isArray(details)) {
+        details.forEach(detail => {
+          const field = detail.loc[1]
+          const msg = detail.msg
+          toast.error(`${field}: ${msg}`)
+        })
+      } else {
+        toast.error('Form verilerinde hata var')
+      }
+    } else if (error.response?.status === 404) {
       toast.error('Kullanıcı bulunamadı')
-    } else if (error.message === 'Invalid credentials') {
+    } else if (error.response?.status === 403) {
       toast.error('Hatalı şifre')
     } else {
       toast.error('Giriş yapılırken bir hata oluştu')

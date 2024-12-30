@@ -10,25 +10,25 @@
       </div>
       
       <div v-else class="cart-items">
-        <div v-for="item in sepetUrunleri" :key="item.urun.id" class="cart-item">
+        <div v-for="item in sepetUrunleri" :key="item?.urun?.id || Math.random()" class="cart-item">
           <div class="item-details">
-            <h3>{{ item.urun.urunAdi }}</h3>
-            <p class="price">{{ formatPrice(item.urun.urunFiyat) }} TL</p>
+            <h3>{{ item?.urun?.urunAdi || 'Ürün' }}</h3>
+            <p class="price">{{ formatPrice(item?.urun?.urunFiyat || 0) }} TL</p>
           </div>
           
           <div class="quantity-controls">
-            <button @click="updateMiktar(item.urun.id, item.miktar - 1)" :disabled="item.miktar <= 1">
+            <button @click="updateMiktar(item?.urun?.id, item.miktar - 1)" :disabled="item.miktar <= 1">
               -
             </button>
             <span>{{ item.miktar }}</span>
-            <button @click="updateMiktar(item.urun.id, item.miktar + 1)">
+            <button @click="updateMiktar(item?.urun?.id, item.miktar + 1)">
               +
             </button>
           </div>
           
           <div class="item-total">
-            <p>Toplam: {{ formatPrice(item.urun.urunFiyat * item.miktar) }} TL</p>
-            <button @click="removeItem(item.urun.id)" class="remove-button">
+            <p>Toplam: {{ formatPrice((item?.urun?.urunFiyat || 0) * item.miktar) }} TL</p>
+            <button @click="removeItem(item?.urun?.id)" class="remove-button">
               Kaldır
             </button>
           </div>
@@ -102,6 +102,7 @@ const siparisOlustur = async () => {
     // Ödeme sayfasına yönlendir
     router.push('/odeme');
   } catch (error) {
+    console.error('Hata:', error);
     toast.error(error.message || 'Bir hata oluştu');
   }
 }
